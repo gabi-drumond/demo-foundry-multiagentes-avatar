@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Asistente Multiagente</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --cp-bg: #eef5f4;
+      --cp-bg-elevated: #f8fbfa;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #e5efed;
+      --cp-border: #c9d9d6;
+      --cp-border-strong: #78918d;
+      --cp-text: #142624;
+      --cp-text-muted: #4d6561;
+      --cp-text-soft: #637a76;
+      --cp-accent: #087f78;
+      --cp-accent-hover: #056c66;
+      --cp-accent-soft: rgba(8, 127, 120, 0.12);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16875d;
+      --cp-danger: #c93e4f;
+      --cp-warning: #e56b4a;
+      --cp-link: #1267a5;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(8, 127, 120, 0.14);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #132326;
+      --cp-bg-elevated: #192d30;
+      --cp-surface: #203538;
+      --cp-surface-soft: #172a2d;
+      --cp-border: #355054;
+      --cp-border-strong: #668084;
+      --cp-text: #edf7f5;
+      --cp-text-muted: #aac0bc;
+      --cp-text-soft: #c3d3d0;
+      --cp-accent: #44d4c7;
+      --cp-accent-hover: #69e0d5;
+      --cp-accent-soft: rgba(68, 212, 199, 0.16);
+      --cp-accent-fg: #092321;
+      --cp-success: #5ade9e;
+      --cp-danger: #ff8391;
+      --cp-warning: #ff8f6b;
+      --cp-link: #7cc5ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(19, 35, 38, 0.88);
+      --cp-panel: rgba(25, 45, 48, 0.78);
+      --cp-panel-strong: rgba(25, 45, 48, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(68, 212, 199, 0.14);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--cp-bg);
+      color: var(--cp-text);
+      font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    button, textarea { font: inherit; }
+    button { letter-spacing: 0; }
+    .shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
+    header {
+      min-height: 68px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px clamp(18px, 3vw, 44px);
+      border-bottom: 1px solid var(--cp-border);
+      background: var(--cp-bg-elevated);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark {
+      width: 36px; height: 36px; display: grid; place-items: center;
+      color: var(--cp-accent-fg); background: var(--cp-accent); border-radius: 10px;
+    }
+    h1 { margin: 0; font-size: 18px; line-height: 1.2; letter-spacing: 0; }
+    .subtitle { color: var(--cp-text-muted); font-size: 13px; }
+    .status { display: flex; align-items: center; gap: 8px; color: var(--cp-text-muted); font-size: 13px; }
+    .status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--cp-border-strong); }
+    .status-dot.ready { background: var(--cp-success); }
+    .status-dot.busy { background: var(--cp-warning); }
+    .status-dot.error { background: var(--cp-danger); }
+    main { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(360px, .92fr); min-height: 0; }
+    .workspace { padding: clamp(20px, 4vw, 52px); display: flex; flex-direction: column; min-width: 0; }
+    .eyebrow { margin: 0 0 8px; color: var(--cp-accent); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+    h2 { margin: 0; max-width: 720px; font-size: clamp(26px, 4vw, 44px); line-height: 1.08; letter-spacing: 0; }
+    .lede { margin: 14px 0 28px; max-width: 660px; color: var(--cp-text-muted); line-height: 1.55; }
+    .composer { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+    textarea {
+      width: 100%; min-height: 108px; resize: vertical; padding: 16px;
+      color: var(--cp-text); background: var(--cp-surface); border: 1px solid var(--cp-border-strong);
+      border-radius: 10px; outline: none; line-height: 1.45;
+    }
+    textarea:focus { border-color: var(--cp-accent); box-shadow: 0 0 0 3px var(--cp-accent-soft); }
+    .actions { display: flex; flex-direction: column; gap: 8px; }
+    .icon-button, .primary-button, .secondary-button {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 46px; border-radius: 10px; cursor: pointer; border: 1px solid var(--cp-border);
+    }
+    .icon-button { width: 48px; color: var(--cp-text); background: var(--cp-surface); }
+    .icon-button.listening { color: var(--cp-accent-fg); background: var(--cp-accent); border-color: var(--cp-accent); }
+    .primary-button { padding: 0 18px; color: var(--cp-accent-fg); background: var(--cp-accent); border-color: var(--cp-accent); }
+    .primary-button:hover { background: var(--cp-accent-hover); }
+    .secondary-button { padding: 0 14px; color: var(--cp-text); background: var(--cp-surface); }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+    .pipeline { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 22px 0; }
+    .step { padding: 12px; border-top: 2px solid var(--cp-border); color: var(--cp-text-muted); font-size: 13px; }
+    .step.active { border-color: var(--cp-warning); color: var(--cp-text); }
+    .step.done { border-color: var(--cp-success); color: var(--cp-text); }
+    .answer {
+      min-height: 150px; padding: 18px; overflow: auto; white-space: pre-wrap; line-height: 1.55;
+      background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 16px;
+      box-shadow: 0 0 2px var(--cp-border), 0 1px 2px var(--cp-border);
+    }
+    .answer.empty { color: var(--cp-text-muted); }
+    .sources { margin-top: 12px; color: var(--cp-text-muted); font-size: 12px; }
+    .stage {
+      position: relative; min-height: 540px; display: grid; place-items: center; overflow: hidden;
+      background: var(--cp-surface-soft); border-left: 1px solid var(--cp-border);
+    }
+    .stage::before {
+      content: ""; position: absolute; inset: 0;
+      background: repeating-linear-gradient(135deg, var(--cp-surface-soft) 0 28px, var(--cp-bg-elevated) 28px 29px);
+    }
+    .video-frame { position: relative; width: 100%; height: 100%; min-height: 540px; display: grid; place-items: center; }
+    video { width: 100%; height: 100%; object-fit: cover; background: var(--cp-surface-soft); }
+    audio { display: none; }
+    .avatar-placeholder { position: absolute; display: grid; justify-items: center; gap: 14px; color: var(--cp-text-muted); text-align: center; }
+    .avatar-placeholder svg { width: 64px; height: 64px; color: var(--cp-accent); }
+    .stage-controls { position: absolute; z-index: 2; left: 20px; right: 20px; bottom: 20px; display: flex; justify-content: space-between; gap: 10px; }
+    .stage-label { padding: 10px 12px; background: var(--cp-panel-strong); border: 1px solid var(--cp-border); border-radius: 10px; font-size: 12px; }
+    .error-message { margin-top: 12px; color: var(--cp-danger); font-size: 13px; min-height: 20px; }
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      .stage { min-height: 420px; border-left: 0; border-top: 1px solid var(--cp-border); }
+      .video-frame { min-height: 420px; }
+    }
+    @media (max-width: 560px) {
+      header { align-items: flex-start; }
+      .subtitle { display: none; }
+      .workspace { padding: 22px 16px; }
+      .composer { grid-template-columns: 1fr; }
+      .actions { flex-direction: row; }
+      .pipeline { grid-template-columns: 1fr; }
+      .step { padding: 8px; }
+      .stage-controls { flex-direction: column; align-items: stretch; }
+      .stage-label { text-align: center; overflow-wrap: anywhere; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand">
+        <div class="brand-mark"><i data-lucide="sparkles"></i></div>
+        <div><h1>Asistente Multiagente</h1></div>
+      </div>
+      <div class="status"><span id="statusDot" class="status-dot"></span><span id="statusText">Comprobando servicios</span></div>
+    </header>
+    <main>
+      <section class="workspace">
+        <p class="eyebrow">Consulta gobernada</p>
+        <h2>Pregunta con tu voz. Responde con evidencia.</h2>
+        <p class="lede">Los especialistas consultan sus bases de Foundry IQ en paralelo. El avatar presenta únicamente la síntesis final.</p>
+        <div class="composer">
+          <textarea id="question" aria-label="Pregunta" placeholder="Escribe una pregunta o usa el micrófono...">Dame la ficha de CardioMax y dime si aplica un 25% de descuento a un cliente que está al corriente.</textarea>
+          <div class="actions">
+            <button id="micButton" class="icon-button" title="Hablar" aria-label="Hablar"><i data-lucide="mic"></i></button>
+            <button id="askButton" class="primary-button"><i data-lucide="send"></i><span>Consultar</span></button>
+          </div>
+        </div>
+        <div class="pipeline" aria-label="Progreso">
+          <div id="stepProduct" class="step">01 Producto</div>
+          <div id="stepCompliance" class="step">02 Cumplimiento</div>
+          <div id="stepSynthesis" class="step">03 Síntesis</div>
+        </div>
+        <div id="answer" class="answer empty">La respuesta fundamentada aparecerá aquí.</div>
+        <div id="sources" class="sources"></div>
+        <div id="errorMessage" class="error-message" role="alert"></div>
+      </section>
+      <aside class="stage" aria-label="Avatar">
+        <div class="video-frame">
+          <video id="avatarVideo" autoplay playsinline></video>
+          <audio id="avatarAudio" autoplay></audio>
+          <div id="avatarPlaceholder" class="avatar-placeholder"><i data-lucide="user-round"></i><span>Conecta el avatar para comenzar</span></div>
+        </div>
+        <div class="stage-controls">
+          <span id="avatarState" class="stage-label">Avatar desconectado</span>
+          <button id="connectButton" class="secondary-button"><i data-lucide="video"></i><span>Conectar avatar</span></button>
+        </div>
+      </aside>
+    </main>
+  </div>
+  <script>
+    const elements = {
+      question: document.getElementById("question"),
+      micButton: document.getElementById("micButton"),
+      askButton: document.getElementById("askButton"),
+      connectButton: document.getElementById("connectButton"),
+      answer: document.getElementById("answer"),
+      sources: document.getElementById("sources"),
+      error: document.getElementById("errorMessage"),
+      statusDot: document.getElementById("statusDot"),
+      statusText: document.getElementById("statusText"),
+      avatarVideo: document.getElementById("avatarVideo"),
+      avatarAudio: document.getElementById("avatarAudio"),
+      avatarPlaceholder: document.getElementById("avatarPlaceholder"),
+      avatarState: document.getElementById("avatarState"),
+      steps: [document.getElementById("stepProduct"), document.getElementById("stepCompliance"), document.getElementById("stepSynthesis")],
+    };
+    let speechSession;
+    let avatarSynthesizer;
+    let peerConnection;
+    let recognizing = false;
+
+    lucide.createIcons();
+
+    function setStatus(text, kind = "") {
+      elements.statusText.textContent = text;
+      elements.statusDot.className = `status-dot ${kind}`.trim();
+    }
+
+    function setSteps(state) {
+      elements.steps.forEach((step, index) => {
+        step.className = "step";
+        if (state === "working" && index < 2) step.classList.add("active");
+        if (state === "synthesis") step.classList.add(index < 2 ? "done" : "active");
+        if (state === "done") step.classList.add("done");
+      });
+    }
+
+    async function jsonRequest(url, options) {
+      const response = await fetch(url, options);
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.detail || `Error HTTP ${response.status}`);
+      return payload;
+    }
+
+    async function getSpeechSession() {
+      speechSession = await jsonRequest("/api/speech/session");
+      return speechSession;
+    }
+
+    function speechConfig(session) {
+      const config = SpeechSDK.SpeechConfig.fromAuthorizationToken(session.token, session.region);
+      config.speechRecognitionLanguage = "es-MX";
+      config.speechSynthesisVoiceName = session.voice;
+      return config;
+    }
+
+    function relayConfig(relay) {
+      const urls = relay.Urls || relay.urls || [];
+      const turnUrls = urls.filter((url) => String(url).startsWith("turn"));
+      return {
+        urls: turnUrls.length ? turnUrls : urls,
+        username: relay.Username || relay.username,
+        credential: relay.Password || relay.password || relay.Credential || relay.credential,
+      };
+    }
+
+    async function connectAvatar() {
+      elements.error.textContent = "";
+      elements.connectButton.disabled = true;
+      elements.avatarState.textContent = "Conectando avatar...";
+      try {
+        const session = await getSpeechSession();
+        peerConnection = new RTCPeerConnection({ iceServers: [relayConfig(session.relay)] });
+        peerConnection.ontrack = (event) => {
+          if (event.track.kind === "video") elements.avatarVideo.srcObject = event.streams[0];
+          if (event.track.kind === "audio") elements.avatarAudio.srcObject = event.streams[0];
+          elements.avatarPlaceholder.hidden = true;
+        };
+        peerConnection.addTransceiver("video", { direction: "sendrecv" });
+        peerConnection.addTransceiver("audio", { direction: "sendrecv" });
+        const avatarConfig = new SpeechSDK.AvatarConfig(session.avatarCharacter, session.avatarStyle);
+        avatarSynthesizer = new SpeechSDK.AvatarSynthesizer(speechConfig(session), avatarConfig);
+        await avatarSynthesizer.startAvatarAsync(peerConnection);
+        elements.avatarState.textContent = "Avatar conectado";
+        elements.connectButton.querySelector("span").textContent = "Reconectar";
+        setStatus("Listo", "ready");
+      } catch (error) {
+        elements.avatarState.textContent = "Avatar no disponible";
+        elements.error.textContent = error.message;
+        setStatus("Revisa Azure Speech", "error");
+      } finally {
+        elements.connectButton.disabled = false;
+      }
+    }
+
+    async function recognizeSpeech() {
+      if (recognizing) return;
+      recognizing = true;
+      elements.micButton.classList.add("listening");
+      elements.error.textContent = "";
+      setStatus("Escuchando", "busy");
+      try {
+        const session = speechSession || await getSpeechSession();
+        const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
+        const recognizer = new SpeechSDK.SpeechRecognizer(speechConfig(session), audioConfig);
+        const result = await new Promise((resolve, reject) => {
+          recognizer.recognizeOnceAsync(resolve, reject);
+        });
+        recognizer.close();
+        if (result.reason !== SpeechSDK.ResultReason.RecognizedSpeech || !result.text) {
+          throw new Error("No se reconoció una pregunta. Intenta hablar otra vez.");
+        }
+        elements.question.value = result.text;
+        setStatus("Pregunta transcrita", "ready");
+      } catch (error) {
+        elements.error.textContent = error.message;
+        setStatus("Error de micrófono", "error");
+      } finally {
+        recognizing = false;
+        elements.micButton.classList.remove("listening");
+      }
+    }
+
+    function plainSpeechText(text) {
+      return text
+        .replace(/【[^】]+】/g, "")
+        .replace(/[#*_`>-]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    async function speak(text) {
+      const spoken = plainSpeechText(text);
+      if (avatarSynthesizer) {
+        const result = await avatarSynthesizer.speakTextAsync(spoken);
+        if (result.reason !== SpeechSDK.ResultReason.SynthesizingAudioCompleted) {
+          throw new Error("El avatar no pudo reproducir la respuesta.");
+        }
+        return;
+      }
+      if ("speechSynthesis" in window) {
+        const utterance = new SpeechSynthesisUtterance(spoken);
+        utterance.lang = "es-MX";
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    async function askAgents() {
+      const question = elements.question.value.trim();
+      if (question.length < 3) {
+        elements.error.textContent = "Escribe o dicta una pregunta.";
+        return;
+      }
+      elements.error.textContent = "";
+      elements.askButton.disabled = true;
+      elements.answer.classList.remove("empty");
+      elements.answer.textContent = "Consultando las bases de conocimiento...";
+      elements.sources.textContent = "";
+      setSteps("working");
+      setStatus("Especialistas trabajando", "busy");
+      try {
+        const result = await jsonRequest("/api/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question }),
+        });
+        setSteps("synthesis");
+        elements.answer.textContent = result.final;
+        elements.sources.textContent = "Evidencia verificada por Producto y Cumplimiento/Riesgo";
+        setSteps("done");
+        setStatus("Respuesta fundamentada", "ready");
+        await speak(result.final);
+      } catch (error) {
+        elements.answer.textContent = "No fue posible completar la consulta.";
+        elements.error.textContent = error.message;
+        setSteps("idle");
+        setStatus("Consulta fallida", "error");
+      } finally {
+        elements.askButton.disabled = false;
+      }
+    }
+
+    async function checkHealth() {
+      try {
+        const health = await jsonRequest("/api/health");
+        if (!health.foundryConfigured || !health.speechConfigured) {
+          setStatus("Configuración pendiente", "busy");
+          return;
+        }
+        setStatus("Servicios configurados", "ready");
+      } catch {
+        setStatus("Servidor no disponible", "error");
+      }
+    }
+
+    elements.connectButton.addEventListener("click", connectAvatar);
+    elements.micButton.addEventListener("click", recognizeSpeech);
+    elements.askButton.addEventListener("click", askAgents);
+    checkHealth();
+  </script>
+</body>
+</html>

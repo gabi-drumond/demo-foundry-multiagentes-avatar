@@ -1,0 +1,11 @@
+# Variables de entorno con datos del proyecto (usa .env.example como plantilla)
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor
+.vscode/*.log
