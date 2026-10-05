@@ -18,6 +18,12 @@ it through a browser UI with speech input and a real-time avatar.
 > Never upload customer documents, production credentials, real tenant identifiers, or confidential
 > deal information to this demo.
 
+> [!NOTE]
+> This README and all source code are in **English**. The step-by-step build and presentation
+> guides under [`Guias/`](Guias/) are written in **Spanish** (they originate from a LATAM field
+> demo). The English README is self-contained and sufficient to deploy and run the demo; the
+> Spanish guides add optional presentation scripts and extra detail.
+
 ## What the demo shows
 
 - **Multi-agent specialization:** product and compliance knowledge stay in separate scopes.
