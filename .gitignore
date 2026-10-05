@@ -1,5 +1,10 @@
-# Variables de entorno con datos del proyecto (usa .env.example como plantilla)
+# Local configuration and credentials
 .env
+.env.*
+!.env.example
+*.key
+*.pem
+*.pfx
 
 # Python
 __pycache__/

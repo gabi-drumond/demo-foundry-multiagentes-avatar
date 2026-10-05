@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from demo_b_orquestador import orchestrate
+from demo_b_orquestador import orchestrate, reset_session
 
 
 ROOT = Path(__file__).resolve().parent
@@ -16,6 +16,7 @@ app = FastAPI(title="Asistente Multiagente con Avatar")
 
 class AskRequest(BaseModel):
     question: str = Field(min_length=3, max_length=2000)
+    businessUnit: str = Field(default="banca-retail")
 
 
 def required_environment(name: str) -> str:
@@ -86,8 +87,14 @@ async def speech_session() -> dict[str, object]:
 
 
 @app.post("/api/ask")
-async def ask(request: AskRequest) -> dict[str, str]:
+async def ask(request: AskRequest) -> dict:
     try:
-        return await orchestrate(request.question.strip())
+        return await orchestrate(request.question.strip(), request.businessUnit)
     except RuntimeError as error:
         raise HTTPException(status_code=502, detail=str(error)) from error
+
+
+@app.post("/api/finops/reset")
+async def finops_reset() -> dict[str, bool]:
+    reset_session()
+    return {"reset": True}
